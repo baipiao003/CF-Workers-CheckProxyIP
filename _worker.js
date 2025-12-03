@@ -12,43 +12,7 @@ export default {
     临时TOKEN = await 双重哈希(url.hostname + timestamp + UA);
     永久TOKEN = env.TOKEN || 临时TOKEN;
 
-    // 不区分大小写检查路径
-    if (path.toLowerCase() === '/check') {
-      if (!url.searchParams.has('proxyip')) return new Response('Missing proxyip parameter', { status: 400 });
-      if (url.searchParams.get('proxyip') === '') return new Response('Invalid proxyip parameter', { status: 400 });
-      if (!url.searchParams.get('proxyip').includes('.') && !(url.searchParams.get('proxyip').includes('[') && url.searchParams.get('proxyip').includes(']'))) return new Response('Invalid proxyip format', { status: 400 });
-
-      if (env.TOKEN) {
-        if (!url.searchParams.has('token') || url.searchParams.get('token') !== 永久TOKEN) {
-          return new Response(JSON.stringify({
-            status: "error",
-            message: `ProxyIP查询失败: 无效的TOKEN`,
-            timestamp: new Date().toISOString()
-          }, null, 4), {
-            status: 403,
-            headers: {
-              "content-type": "application/json; charset=UTF-8",
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
-        }
-      }
-
-      // 获取参数中的IP或使用默认IP
-      const proxyIP = url.searchParams.get('proxyip').toLowerCase();
-      const colo = request.cf?.colo || 'CF';
-      // 调用CheckProxyIP函数
-      const result = await CheckProxyIP(proxyIP, colo);
-
-      // 返回JSON响应，根据检查结果设置不同的状态码
-      return new Response(JSON.stringify(result, null, 2), {
-        status: result.success ? 200 : 502,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        }
-      });
-    } else if (path.toLowerCase() === '/resolve') {
+    if (path.toLowerCase() === '/resolve') {
       if (!url.searchParams.has('token') || (url.searchParams.get('token') !== 临时TOKEN) && (url.searchParams.get('token') !== 永久TOKEN)) {
         return new Response(JSON.stringify({
           status: "error",
@@ -1268,7 +1232,7 @@ async function HTML(hostname, 网站图标) {
       
       <h3 style="color: var(--text-primary); margin: 24px 0 16px;">💡 使用示例</h3>
       <div class="code-block">
-curl "https://${hostname}/check?proxyip=1.2.3.4:443"
+curl "https://cf.090227.xyz/check?proxyip=1.2.3.4:443"
       </div>
 
       <h3 style="color: var(--text-primary); margin: 24px 0 16px;">🔗 响应Json格式</h3>
@@ -1553,7 +1517,7 @@ curl "https://${hostname}/check?proxyip=1.2.3.4:443"
     
     // 检查单个IP
     async function checkSingleIP(proxyip, resultDiv) {
-      const response = await fetch(\`./check?proxyip=\${encodeURIComponent(proxyip)}\`);
+      const response = await fetch(\`https://cf.090227.xyz/check?proxyip=\${encodeURIComponent(proxyip)}\`);
       const data = await response.json();
       
       if (data.success) {
@@ -1797,7 +1761,7 @@ curl "https://${hostname}/check?proxyip=1.2.3.4:443"
     // 检查IP状态
     async function checkIPStatus(ip) {
       try {
-        const response = await fetch(\`./check?proxyip=\${encodeURIComponent(ip)}\`);
+        const response = await fetch(\`https://cf.090227.xyz/check?proxyip=\${encodeURIComponent(ip)}\`);
         const data = await response.json();
         return data;
       } catch (error) {
