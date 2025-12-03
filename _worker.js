@@ -12,7 +12,43 @@ export default {
     临时TOKEN = await 双重哈希(url.hostname + timestamp + UA);
     永久TOKEN = env.TOKEN || 临时TOKEN;
 
-    if (path.toLowerCase() === '/resolve') {
+    // 不区分大小写检查路径
+    if (path.toLowerCase() === '/check') {
+      if (!url.searchParams.has('proxyip')) return new Response('Missing proxyip parameter', { status: 400 });
+      if (url.searchParams.get('proxyip') === '') return new Response('Invalid proxyip parameter', { status: 400 });
+      if (!url.searchParams.get('proxyip').includes('.') && !(url.searchParams.get('proxyip').includes('[') && url.searchParams.get('proxyip').includes(']'))) return new Response('Invalid proxyip format', { status: 400 });
+
+      if (env.TOKEN) {
+        if (!url.searchParams.has('token') || url.searchParams.get('token') !== 永久TOKEN) {
+          return new Response(JSON.stringify({
+            status: "error",
+            message: `ProxyIP查询失败: 无效的TOKEN`,
+            timestamp: new Date().toISOString()
+          }, null, 4), {
+            status: 403,
+            headers: {
+              "content-type": "application/json; charset=UTF-8",
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+      }
+
+      // 获取参数中的IP或使用默认IP
+      const proxyIP = url.searchParams.get('proxyip').toLowerCase();
+      const colo = request.cf?.colo || 'CF';
+      // 调用CheckProxyIP函数
+      const result = await CheckProxyIP(proxyIP, colo);
+
+      // 返回JSON响应，根据检查结果设置不同的状态码
+      return new Response(JSON.stringify(result, null, 2), {
+        status: result.success ? 200 : 502,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
+      });
+    } else if (path.toLowerCase() === '/resolve') {
       if (!url.searchParams.has('token') || (url.searchParams.get('token') !== 临时TOKEN) && (url.searchParams.get('token') !== 永久TOKEN)) {
         return new Response(JSON.stringify({
           status: "error",
