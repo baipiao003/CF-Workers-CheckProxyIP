@@ -180,45 +180,23 @@ export default {
 
 // 新增域名解析函数
 async function resolveDomain(domain) {
-  domain = domain.includes(':') ? domain.split(':')[0] : domain;
+  domain = domain.split(':')[0]; // 移除端口
   try {
-    // 并发请求IPv4和IPv6记录
-    const [ipv4Response, ipv6Response] = await Promise.all([
+    const [ipv4Data, ipv6Data] = await Promise.all([
       fetch(`https://1.1.1.1/dns-query?name=${domain}&type=A`, {
         headers: { 'Accept': 'application/dns-json' }
-      }),
+      }).then(r => r.json()),
       fetch(`https://1.1.1.1/dns-query?name=${domain}&type=AAAA`, {
         headers: { 'Accept': 'application/dns-json' }
-      })
+      }).then(r => r.json())
     ]);
 
-    const [ipv4Data, ipv6Data] = await Promise.all([
-      ipv4Response.json(),
-      ipv6Response.json()
-    ]);
+    const ips = [
+      ...(ipv4Data.Answer?.filter(r => r.type === 1).map(r => r.data) || []),
+      ...(ipv6Data.Answer?.filter(r => r.type === 28).map(r => `[${r.data}]`) || [])
+    ];
 
-    const ips = [];
-
-    // 添加IPv4地址
-    if (ipv4Data.Answer) {
-      const ipv4Addresses = ipv4Data.Answer
-        .filter(record => record.type === 1) // A记录
-        .map(record => record.data);
-      ips.push(...ipv4Addresses);
-    }
-
-    // 添加IPv6地址
-    if (ipv6Data.Answer) {
-      const ipv6Addresses = ipv6Data.Answer
-        .filter(record => record.type === 28) // AAAA记录
-        .map(record => `[${record.data}]`); // IPv6地址用方括号包围
-      ips.push(...ipv6Addresses);
-    }
-
-    if (ips.length === 0) {
-      throw new Error('No A or AAAA records found');
-    }
-
+    if (!ips.length) throw new Error('No A or AAAA records found');
     return ips;
   } catch (error) {
     throw new Error(`DNS resolution failed: ${error.message}`);
